@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+import heapq
 import tensorflow as tf 
 from tensorflow import keras
 from sklearn.model_selection import train_test_split
@@ -209,8 +210,13 @@ for i in range(len(keys)) :
     grouped_dict[keys[i]].reset_index(drop = False, inplace = True)
 
 
-aqwer1 = np.vstack(gender(Library_book_gender_year_add['gender'])),age(Library_book_gender_year_add['year'])
 
+
+
+
+
+
+aqwer1 = np.vstack(categories(Library_book_gender_year_add['genre'])),age(Library_book_gender_year_add['year'])
 
 max_len = max(len(seq) for seq in aqwer1)
 
@@ -218,48 +224,53 @@ padded_sequences = [pad_sequences(seq, maxlen=9, padding='post', truncating='pos
 
 reshape1 = np.expand_dims(padded_sequences[0], axis = 1)
 reshape2 = np.expand_dims(padded_sequences[1], axis = 1)
+x_train = np.concatenate((reshape1,reshape2),axis = 1)
+y_train = gender(Library_book_gender_year_add['gender'])
 
-sawq = np.concatenate((reshape1,reshape2),axis = 1)
-saqwe = sawq.astype(np.float64)
-
-x_train = categories(Library_book_gender_year_add['genre'])
-y_train = saqwe
-
-us1 = 1
+us1 = 8
 user_info = grouped_dict[keys[us1]]
-user_info_test = np.vstack(gender(user_info['gender'])),age(user_info['year'])
-max_len_user = max(len(seq1) for seq1 in user_info_test)
+user_data_test = gender(user_info['gender'])
 
-pad_sequences_user = [pad_sequences(seq1, maxlen=9, padding='post', truncating='post') for seq1 in user_info_test]
+
+
+'''
+user_info_test = gender(user_info['gender'])
+max_len_user = max(len(seq1) for seq1 in user_info_test)
+user_data_test = gender(user_info['gender'])
+'''
+
+
+'''
+pad_sequences_user = [pad_sequences(seq1, maxlen=3, padding='post', truncating='post') for seq1 in user_info_test]
 
 user_reshape1 = np.expand_dims(pad_sequences_user[0], axis = 1)
 user_reshape2 = np.expand_dims(pad_sequences_user[1], axis = 1)
 user_data = np.concatenate((user_reshape1[0],user_reshape2[0]),axis = 1)
 user_data_test1 = user_data.reshape(2,9)
 user_data_test = user_data_test1.astype(np.float64)
-
-
 '''
+'''
+
 model = keras.models.Sequential()
-model.add(keras.layers.SimpleRNN(256,activation='tanh',input_shape=(10,1)))
+model.add(keras.layers.SimpleRNN(256,activation='tanh',input_shape=(2,9)))
 model.add(keras.layers.Dense(128, activation='tanh'))
 model.add(keras.layers.Dense(32, activation='tanh'))
 model.add(keras.layers.Dropout(0.25))
-model.add(keras.layers.Dense(9*2, activation='softmax'))
-model.add(keras.layers.Reshape((2,9)))
+model.add(keras.layers.Dense(3, activation='softmax'))
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 epochs_ = 10
 with tf.device("/device:GPU:0"):
     history = model.fit(x_train,y_train, epochs=epochs_,batch_size=400)
     optimizer = keras.optimizers.Adam(learning_rate=0.00001)
-model.save('sw_lib_model1.h5')  
+#model.save('sw_lib_model1.h6')  
+
 
 '''
 
 
 
 
-new_model1 = keras.models.load_model('sw_lib_model.h5')
+new_model1 = keras.models.load_model('sw_lib_model1.h6')
 
 tt =  new_model1.predict(x_train)
 
@@ -276,14 +287,21 @@ result_matrix = np.zeros_like(tt)
 for i in range(ref_matrices.shape[0]):
     for j in range(ref_matrices.shape[1]):
         max_index = max_indices[i, j]
-        result_matrix[i, j, max_index] = tt[i, j, max_index]
+        result_matrix[i, max_index] = tt[i, max_index]
 
 ref_matrices = np.tile(user_data_test, (max_len, 1, 1))
 similarities_per_matrix = []
-
-#코사인 유사도
+asd = []
+'''
 for target_matrix in result_matrix:
-    similarity = cosine_similarity(user_data_test.reshape(1, -1), target_matrix.reshape(1, -1))
+    similarity = cosine_similarity(user_data_test[0].reshape(1,-1), target_matrix.reshape(1, -1))
+    asd.append(similarity)
+    similarities_per_matrix.append(similarity[0][0])
+  '''  
+#코사인 유사도
+for target_matrix in tt:
+    similarity = cosine_similarity(user_data_test[0].reshape(1,-1), target_matrix.reshape(1, -1))
+    asd.append(similarity)
     similarities_per_matrix.append(similarity[0][0])
 
 
@@ -312,30 +330,25 @@ result = delete1[~delete1['isbn'].isin(user_info['isbn'])].dropna(axis = 'index'
 #result['lend_status'] = result['lend_status'].replace('T')
 
 sorted_result = result.sort_values(by='similarity', ascending = False)
+
+
+
+
 max_value = sorted_result.iloc[0]['similarity']
-            
 max_columns = sorted_result[sorted_result['similarity'] == max_value]       
-random_column = max_columns.sample(3)         
+
+if(len(max_columns) < 3) :
+    random_column = max_columns
+else :                
+    random_column = max_columns.sample(3)         
+  
+       
 print(random_column)
 
-'''
-arr123 = sorted(similarities_per_matrix)
 
 
 
 
 
 
-
-
-
-# 각 책과 사용자 프로파일 간의 코사인 유사도 계산
-similarities = [cosine_similarity(user_vector, book_vector)[0][0] for book_vector in book_vectors]
-
-# 추천 결과 출력
-recommendations = result.copy()
-recommendations['similarity'] = similarities
-recommendations = recommendations.sort_values(by='similarity', ascending=False)
-print(recommendations[['title','isbn','similarity']])
-'''
 
